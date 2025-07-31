@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom Playlist – Spotify-style</title>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-dark: #121212;
+      --bg-light: #181818;
+      --bg-hover: #282828;
+      --accent:   #1db954;
+      --text-primary:   #fff;
+      --text-secondary: #b3b3b3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      color: var(--text-primary);
+      background: var(--bg-dark);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      flex-direction: column;            /* so the player can sit at bottom */
+    }
+
+    /* ───────── Sidebar ───────── */
+    .layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    aside {
+      width: 240px;
+      background: var(--bg-light);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .logo { font-size: 24px; font-weight: 700; }
+
+    nav ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+    nav li {
+      cursor: pointer; padding:8px 12px; border-radius:4px;
+      color:var(--text-secondary); transition:background .2s,color .2s;
+    }
+    nav li:hover, nav li.active { background:var(--bg-hover); color:var(--text-primary); }
+
+    /* ───────── Main ───────── */
+    main { flex:1; overflow-y:auto; }
+    header.playlist-header {
+      display:flex; gap:24px; padding:32px;
+      background:linear-gradient(0deg,rgba(0,0,0,.4),rgba(0,0,0,.6)),
+                 url("https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=700&q=80") center/cover;
+      align-items:end;
+    }
+    header .cover { width:160px;height:160px;flex-shrink:0;background:var(--bg-light);box-shadow:0 4px 20px rgba(0,0,0,.5);}
+    header .meta { display:flex;flex-direction:column;gap:8px;}
+    .meta .type { font-size:12px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;}
+    .meta h1 { font-size:48px;margin:0;}
+    .meta .desc { font-size:14px;color:var(--text-secondary);}
+
+    /* Controls */
+    .controls {
+      display:flex;align-items:center;gap:24px;padding:24px 32px;
+      position:sticky;top:0;background:var(--bg-dark);border-bottom:1px solid var(--bg-hover);z-index:2;
+    }
+    .play-btn{
+      width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .2s;
+    }
+    .play-btn:hover{transform:scale(1.05);}
+    .play-btn svg{margin-left:4px;}
+    .add-btn{
+      background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:24px;transition:color .2s;
+    }
+    .add-btn:hover{color:var(--text-primary);}
+
+    /* Tracklist */
+    table.tracklist { width:100%; border-collapse:collapse; min-width:600px; }
+    thead th {
+      text-align:left;padding:12px 32px;font-size:12px;font-weight:500;
+      color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;
+    }
+    tbody tr { transition:background .2s; cursor:pointer; }
+    tbody tr:hover { background:var(--bg-hover); }
+    tbody tr.playing { background: var(--bg-hover); }
+    tbody td { padding:12px 32px;font-size:14px;vertical-align:middle; }
+    tbody td:first-child { color:var(--text-secondary); width:24px; }
+    tbody td.duration { text-align:right; }
+
+    /* Add Song Dialog */
+    dialog {
+      border:none;border-radius:8px;background:var(--bg-light);color:var(--text-primary);
+      padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.6);
+    }
+    dialog::backdrop { background:rgba(0,0,0,.6); }
+    dialog form { display:flex;flex-direction:column;gap:16px;}
+    dialog input{
+      padding:10px 12px;background:var(--bg-dark);border:1px solid var(--bg-hover);
+      border-radius:4px;color:var(--text-primary);
+    }
+    dialog button{
+      padding:10px 14px;border:none;background:var(--accent);border-radius:4px;font-weight:600;cursor:pointer;color:#000;
+    }
+    dialog .cancel{background:transparent;color:var(--text-secondary);}
+
+    /* Audio player */
+    footer#audioBar{
+      width:100%;background:var(--bg-light);border-top:1px solid var(--bg-hover);
+      padding:8px 16px;
+    }
+    audio{ width:100%; }
+  </style>
+</head>
+<body>
+
+  <div class="layout">
+    <!-- ─────── Sidebar ─────── -->
+    <aside>
+      <div class="logo">♫ MyTunes</div>
+      <nav>
+        <ul>
+          <li class="active">Home</li>
+          <li>Search</li>
+          <li>Your Library</li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- ─────── Main Content ─────── -->
+    <main>
+      <header class="playlist-header">
+        <img class="cover" src="https://placehold.co/160" alt="Playlist cover">
+        <div class="meta">
+          <span class="type">Playlist</span>
+          <h1>Custom Mix</h1>
+          <p class="desc">Add your own tracks and jam out.</p>
+        </div>
+      </header>
+
+      <div class="controls">
+        <button class="play-btn" id="mainPlayBtn" title="Play">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5 3L19 12L5 21V3Z"></path>
+          </svg>
+        </button>
+        <button class="add-btn" id="openAddSong" title="Add song">＋</button>
+      </div>
+
+      <!-- Track table -->
+      <table class="tracklist" id="trackTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Title</th><th>Artist</th><th class="duration">Length</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
+            <td>1</td><td>Example Song One</td><td>Demo Artist</td><td class="duration">3:45</td>
+          </tr>
+          <tr data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">
+            <td>2</td><td>Second Example</td><td>Another Artist</td><td class="duration">4:10</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- ─────── Bottom Audio Bar ─────── -->
+  <footer id="audioBar">
+    <audio id="audioPlayer" controls preload="none"></audio>
+  </footer>
+
+  <!-- ─────── Add Song Modal ─────── -->
+  <dialog id="addSongDialog">
+    <form id="addSongForm" method="dialog">
+      <h2>Add a New Song</h2>
+      <input id="songTitle"   type="text" placeholder="Song title" required />
+      <input id="songArtist"  type="text" placeholder="Artist" required />
+      <input id="songLength"  type="text" placeholder="Length (mm:ss)" pattern="\\d{1,2}:\\d{2}" required />
+      <input id="songURL"     type="url"  placeholder="Audio URL (mp3/ogg)" required />
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button type="submit">Add</button>
+        <button type="button" class="cancel" id="cancelDialog">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    /* ---------- Elements ---------- */
+    const tableBody   = document.querySelector('#trackTable tbody');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const mainPlayBtn = document.getElementById('mainPlayBtn');
+
+    const dialog      = document.getElementById('addSongDialog');
+    const openBtn     = document.getElementById('openAddSong');
+    const cancelBtn   = document.getElementById('cancelDialog');
+    const form        = document.getElementById('addSongForm');
+
+    let currentRow = null;   // remembers the <tr> that’s playing
+
+    /* ---------- Helpers ---------- */
+    function playRow(row){
+      if(!row?.dataset.src) return;
+      // remove highlight from previous
+      if(currentRow) currentRow.classList.remove('playing');
+      currentRow = row;
+      currentRow.classList.add('playing');
+
+      audioPlayer.src = row.dataset.src;
+      audioPlayer.play().catch(()=>{ /* autoplay blocked? */ });
+    }
+
+    /* ---------- Row click to play ---------- */
+    tableBody.addEventListener('click', (e)=>{
+      const row = e.target.closest('tr');
+      if(row) playRow(row);
+    });
+
+    /* ---------- Main play button ---------- */
+    mainPlayBtn.addEventListener('click', ()=>{
+      if(currentRow){
+        if(audioPlayer.paused) audioPlayer.play(); else audioPlayer.pause();
+      } else {
+        // play first song by default
+        const first = tableBody.querySelector('tr');
+        if(first) playRow(first);
+      }
+    });
+
+    /* ---------- Add-song dialog ---------- */
+    openBtn.addEventListener('click', ()=> dialog.showModal());
+    cancelBtn.addEventListener('click', ()=> dialog.close());
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const title  = document.getElementById('songTitle').value.trim();
+      const artist = document.getElementById('songArtist').value.trim();
+      const length = document.getElementById('songLength').value.trim();
+      const url    = document.getElementById('songURL').value.trim();
+      if(!title || !artist || !length || !url) return;
+
+      const index = tableBody.children.length + 1;
+      const row = document.createElement('tr');
+      row.dataset.src = url;
+      row.innerHTML = `
+        <td>${index}</td>
+        <td>${title}</td>
+        <td>${artist}</td>
+        <td class="duration">${length}</td>`;
+      tableBody.appendChild(row);
+
+      dialog.close(); form.reset();
+    });
+
+    /* ---------- Auto-advance next track (optional nice touch) ---------- */
+    audioPlayer.addEventListener('ended', ()=>{
+      if(!currentRow) return;
+      const next = currentRow.nextElementSibling;
+      if(next) playRow(next);
+      else currentRow.classList.remove('playing');
+    });
+  </script>
+</body>
+</html>
